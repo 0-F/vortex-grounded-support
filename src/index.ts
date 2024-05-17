@@ -153,6 +153,36 @@ function installContent_paks(files: string[]) {
   return Promise.resolve({ instructions });
 }
 
+function testSupportedContent_generic(files: string[], gameId: string) {
+  // Make sure we're able to support this mod.
+  const supported = (gameId === GAME_ID)
+
+  return Promise.resolve({
+    supported,
+    requiredFiles: [],
+  });
+}
+
+function installContent_generic(files: string[]) {
+  const modFile = files.find((file) => !file.endsWith('/'));
+  const rootPath = modFile.match(/.*\\?(?:Grounded\\|^)/)[0];
+  const idx = rootPath.length;
+
+  // Remove directories and anything that isn't in the rootPath.
+  const filtered = files.filter((file: string) =>
+    ((file.indexOf(rootPath) !== -1) && (!file.endsWith(path.sep))));
+
+  const instructions = filtered.map((file: string) => {
+    return {
+      type: 'copy',
+      source: file,
+      destination: path.join(file.substring(idx)),
+    };
+  });
+
+  return Promise.resolve({ instructions });
+}
+
 // function setup(discovery: types.IDiscoveryResult) {
 //   if (discovery.store === 'xbox') {
 //     BinariesPath = MS_BINARIES_PATH
@@ -189,6 +219,7 @@ function main(context: types.IExtensionContext) {
   context.registerInstaller('grounded-ue4ss_cpp', 30, testSupportedContent_ue4ss_cpp, installContent_ue4ss_cpp);
   context.registerInstaller('grounded-ue4ss_BPLogicMods', 35, testSupportedContent_ue4ss_BPLogicMods, installContent_ue4ss_BPLogicMods);
   context.registerInstaller('grounded-paks', 40, testSupportedContent_paks, installContent_paks);
+  context.registerInstaller('grounded-generic', 90, testSupportedContent_generic, installContent_generic)
 
   return true
 }
