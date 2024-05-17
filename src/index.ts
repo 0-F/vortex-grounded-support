@@ -106,8 +106,7 @@ function installContent_ue4ss_BPLogicMods(files: string[]) {
   const rootPath = modFile.replace(regex, '')
 
   // Remove directories and anything that isn't in the rootPath.
-  const filtered = files.filter((file: string) =>
-  ((file.indexOf(rootPath) !== -1)
+  const filtered = files.filter((file: string) => ((file.indexOf(rootPath) !== -1)
     && (!file.endsWith(path.sep))));
 
   const instructions = filtered.map((file: string) => {
