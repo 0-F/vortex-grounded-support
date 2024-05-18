@@ -96,6 +96,13 @@ async function checkForUE4SS(api: IExtensionApi) {
   }
 }
 
+/**
+ * Test if this is a supported UE4SS Lua mod.
+ * @param files 
+ * @param gameId 
+ * @param api 
+ * @returns 
+ */
 async function testSupportedContent_ue4ss_lua(files: string[], gameId: string, api: IExtensionApi) {
   // required: <mod_name>\Scripts\main.lua
   const supported = (gameId === GAME_ID) &&
@@ -109,11 +116,13 @@ async function testSupportedContent_ue4ss_lua(files: string[], gameId: string, a
   });
 }
 
+/**
+ * Install a UE4SS Lua mod.
+ * @param files 
+ * @param api 
+ * @returns 
+ */
 async function installContent_ue4ss_lua(files: string[], api: IExtensionApi) {
-  /*
-    UE4SS Lua mods
-  */
-
   // The main.lua file is expected to always be positioned in "<MOD_NAME>\Scripts\main.lua".
   const regex = /[^\\]+\\Scripts\\main\.lua$/
   const modFile = files.find((file: string) => regex.test(file));
@@ -141,8 +150,14 @@ async function installContent_ue4ss_lua(files: string[], api: IExtensionApi) {
   return Promise.resolve({ instructions });
 }
 
+/**
+ * Test if this is a supported UE4SS C++ mod.
+ * @param files 
+ * @param gameId 
+ * @param api 
+ * @returns 
+ */
 async function testSupportedContent_ue4ss_cpp(files: string[], gameId: string, api: IExtensionApi) {
-
   // required: <mod_name>\dlls\main.dll
   const supported = (gameId === GAME_ID) &&
     (files.find((file: string) => /[^\\]+\\dlls\\main\.dll$/.test(file)) !== undefined);
@@ -155,11 +170,13 @@ async function testSupportedContent_ue4ss_cpp(files: string[], gameId: string, a
   });
 }
 
+/**
+ * Install a UE4SS C++ mod.
+ * @param files 
+ * @param api 
+ * @returns 
+ */
 function installContent_ue4ss_cpp(files: string[], api: IExtensionApi) {
-  /*
-    UE4SS C++ mods
-  */
-
   // The main.dll file is expected to always be positioned in "<MOD_NAME>\dlls\main.dll".
   const regex = /[^\\]+\\dlls\\main\.dll$/
   const modFile = files.find((file: string) => regex.test(file));
@@ -188,6 +205,13 @@ function installContent_ue4ss_cpp(files: string[], api: IExtensionApi) {
   return Promise.resolve({ instructions });
 }
 
+/**
+ * Test if this is a supported UE4SS Blueprint (.pak) mod.
+ * @param files 
+ * @param gameId 
+ * @param api 
+ * @returns 
+ */
 async function testSupportedContent_ue4ss_BPLogicMods(files: string[], gameId: string, api: IExtensionApi) {
   // required: LogicMods\*.pak
   const supported = (gameId === GAME_ID) &&
@@ -201,11 +225,12 @@ async function testSupportedContent_ue4ss_BPLogicMods(files: string[], gameId: s
   });
 }
 
+/**
+ * Install a UE4SS Blueprint (.pak) mod.
+ * @param files 
+ * @returns 
+ */
 async function installContent_ue4ss_BPLogicMods(files: string[]) {
-  /*
-    UE4SS Blueprint (.pak) mods
-  */
-
   // The .pak file is expected to always be positioned in "LogicMods\*\*.pak".
   const regex = /LogicMods\\.+\.pak$/
   const modFile = files.find((file: string) => regex.test(file));
@@ -227,6 +252,12 @@ async function installContent_ue4ss_BPLogicMods(files: string[]) {
   return Promise.resolve({ instructions });
 }
 
+/**
+ * Test if this is a supported Pak mod.
+ * @param files 
+ * @param gameId 
+ * @returns 
+ */
 async function testSupportedContent_paks(files: string[], gameId: string) {
   // required: *.pak
   const supported = (gameId === GAME_ID) &&
@@ -238,11 +269,12 @@ async function testSupportedContent_paks(files: string[], gameId: string) {
   });
 }
 
+/**
+ * Install a Pak mod.
+ * @param files 
+ * @returns 
+ */
 async function installContent_paks(files: string[]) {
-  /*
-    .pak mods
-  */
-
   // The .pak file is expected to always be positioned in the Paks directory.
   const modFile = files.find((file: string) => path.extname(file).toLowerCase() === '.pak');
   const idx = modFile.indexOf(path.basename(modFile));
@@ -264,8 +296,14 @@ async function installContent_paks(files: string[]) {
   return Promise.resolve({ instructions });
 }
 
-async function testSupportedContent_generic(_files: string[], gameId: string) {
-  const supported = (gameId === GAME_ID)
+/**
+ * Test if this is a supported generic mod.
+ * @param files 
+ * @param gameId 
+ * @returns 
+ */
+async function testSupportedContent_generic(files: string[], gameId: string) {
+  const supported = (gameId === GAME_ID && files.length > 0)
 
   return Promise.resolve({
     supported,
@@ -273,11 +311,14 @@ async function testSupportedContent_generic(_files: string[], gameId: string) {
   });
 }
 
+/**
+ * Install a generic mod.
+ * @param files 
+ * @returns 
+ */
 async function installContent_generic(files: string[]) {
   /*
-    Generic mods
- 
-    Example:
+    Generic mod example:
  
     Grounded-mod.zip
     ├── Grounded
@@ -311,6 +352,10 @@ async function installContent_generic(files: string[]) {
   return Promise.resolve({ instructions });
 }
 
+/**
+ * Prepare for modding.
+ * @param discovery 
+ */
 async function prepareForModding(discovery: types.IDiscoveryResult) {
   const binariesPath = BINARIES_PATH[discovery.store]
   const contentPath = 'Maine\\Content'
@@ -383,8 +428,6 @@ function main(context: types.IExtensionContext) {
   context.registerInstaller('grounded-generic', 90,
     testSupportedContent_generic,
     installContent_generic)
-
-
 
   return true
 }
