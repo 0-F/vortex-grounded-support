@@ -127,6 +127,7 @@ dist
 
 # VSCode
 *.code-workspace
+.vscode/
 
 # yarn v2
 .yarn/cache

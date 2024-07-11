@@ -1,6 +1,6 @@
 {
   "name": "grounded-support",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Adds Grounded game support to Vortex",
   "main": "./out/index.js",
   "repository": "",
@@ -17,7 +17,7 @@
   "license": "MIT",
   "babel": {
     "presets": [
-      "es2015"
+      "esnext"
     ]
   },
   "devDependencies": {
@@ -26,6 +26,7 @@
     "@types/react": "^17.0.11",
     "@types/redux": "^3.6.0",
     "@types/redux-thunk": "^2.1.0",
+    "@types/semver": "^7.5.8",
     "@typescript-eslint/eslint-plugin": "^5.32.0",
     "@typescript-eslint/parser": "^5.32.0",
     "bluebird": "^3.7.2",
@@ -36,11 +37,17 @@
     "i18next": "^19.0.1",
     "react": "^17.0.2",
     "react-bootstrap": "^0.33.0",
+    "semver": "^7.6.2",
     "ts-loader": "^9.2.6",
+    "turbowalk": "github:Nexus-Mods/node-turbowalk",
     "typescript": "^4.4.3",
     "vortex-api": "github:Nexus-Mods/vortex-api",
     "turbowalk": "github:Nexus-Mods/node-turbowalk",
     "webpack": "^5.57.1",
     "webpack-cli": "^4.8.0"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "vortex-download-helper": "https://github.com/IDCs/vortex-download-helper"
   }
 }

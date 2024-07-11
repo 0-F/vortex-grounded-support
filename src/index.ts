@@ -2,6 +2,31 @@ import path from 'path';
 import { access } from 'fs/promises';
 import { types, selectors, fs, util } from 'vortex-api';
 import { IExtensionApi } from 'vortex-api/lib/types/IExtensionContext';
+import { PLUGIN_REQUIREMENTS } from './common';
+import { download } from './downloader';
+
+interface IGitHubRelease {
+  url: string;
+  id: number;
+  tag_name: string;
+  name: string;
+  assets: IGitHubAsset[];
+}
+
+interface IGitHubAsset {
+  url: string;
+  id: number;
+  name: string;
+  label: string | null;
+  state: string;
+  size: number;
+  download_count: number;
+  created_at: string;
+  updated_at: string;
+  browser_download_url: string;
+  release: IGitHubRelease;
+}
+
 
 const GAME_ID = 'grounded';
 
@@ -16,6 +41,9 @@ const BINARIES_PATH = {
 }
 
 const UE4SS_MODS_PATH = 'Mods'
+const UE4SS_SETTINGS_FILE = 'UE4SS-settings.ini';
+const UE4SS_MODS_FILE = 'mods.txt';
+const UE4SS_MODS_FILE_BACKUP = 'mods.txt.original';
 
 /**
  * Test if a file exists.
@@ -51,7 +79,7 @@ async function checkForUE4SS(api: IExtensionApi) {
       message:
         'UE4SS 3.0 uses two new dlls: UE4SS.dll and ' +
         'dwmapi.dll and no longer uses the older xinput1_3.dll (or xinput1_4.dll). ' +
-        'If you want to use UE4SS version 3, you have to delete xinput1_3.dll and xinput1_4.dll.',
+        'If you want to use UE4SS version 2, you have to delete xinput1_3.dll and xinput1_4.dll.',
       actions: [
         {
           title: 'Open folder',
@@ -69,7 +97,7 @@ async function checkForUE4SS(api: IExtensionApi) {
       title: 'UE4SS v2 installed',
       message:
         'It look like UE4SS v2 is installed. ' +
-        'The mod may need a UE4SS v3. ' +
+        'The mod may need UE4SS v3. ' +
         'Remember that you have to uninstall UE4SS v2 before installing UE4SS v3.',
       actions: [
         {
@@ -79,6 +107,7 @@ async function checkForUE4SS(api: IExtensionApi) {
       ]
     });
   }
+
   // UE4SS not installed
   else if (!ue4ssdll || !dwmapidll) {
     api.sendNotification({
@@ -97,6 +126,89 @@ async function checkForUE4SS(api: IExtensionApi) {
 }
 
 /**
+ * Test if this is a supported UE4SS injector release.
+ * @param files 
+ * @param gameId 
+ * @returns 
+ */
+async function testSupportedContent_ue4ss_injector(files: string[], gameId: string) {
+  // required: UE4SS-settings.ini
+  const supported = gameId === GAME_ID && files.some(
+    file => file.toLowerCase() === UE4SS_SETTINGS_FILE.toLowerCase());
+
+  return Promise.resolve({
+    supported,
+    requiredFiles: [],
+  });
+}
+
+/**
+ * Install a UE4SS injector release.
+ * @param files 
+ * @param api 
+ * @param destinationPath 
+ * @param gameId 
+ * @returns 
+ */
+async function installContent_ue4ss_injector(files: string[], api: types.IExtensionApi, destinationPath: string) {
+  // get the binaries path
+  // Maine\\Binaries\\Win64 for Steam
+  // Maine\\Binaries\\WinGDK for Microsoft Windows Store/Xbox Pass
+  const gameStore = selectors.currentGameDiscovery(api.getState()).store;
+  const binariesPath = BINARIES_PATH[gameStore]
+
+  const instructions = await files.reduce(async (accumP, iter) => {
+    const accum = await accumP;
+    const segments = iter.split(path.sep);
+    if (path.extname(segments[segments.length - 1]) !== '') {
+      const destination = path.join(binariesPath, iter);
+
+      if (path.basename(iter) === UE4SS_MODS_FILE) {
+        const modsData: string = await fs.readFileAsync(path.join(destinationPath, iter), { encoding: 'utf8' });
+        const modsInstr: types.IInstruction = {
+          type: 'generatefile',
+          data: modsData,
+          destination: UE4SS_MODS_FILE_BACKUP,
+        }
+        accum.push(modsInstr);
+
+        return accum;
+      }
+
+      if (iter === UE4SS_SETTINGS_FILE) {
+        // Disable the use of Unreal's object array cache regardless of game store - it's causing crashes.
+        const data: string = await fs.readFileAsync(path.join(destinationPath, iter), { encoding: 'utf8' });
+        const newData = data.replace(/bUseUObjectArrayCache = true/gm, 'bUseUObjectArrayCache = false');
+        const createInstr: types.IInstruction = {
+          type: 'generatefile',
+          data: newData,
+          destination,
+        }
+        accum.push(createInstr);
+
+        return accum;
+      }
+
+      const instruction: types.IInstruction = {
+        type: 'copy',
+        source: iter,
+        destination,
+      }
+      accum.push(instruction);
+    }
+
+    return accum;
+
+  }, Promise.resolve([]))
+  instructions.push({
+    type: 'setmodtype',
+    value: '',
+  })
+
+  return { instructions };
+}
+
+/**
  * Test if this is a supported UE4SS Lua mod.
  * @param files 
  * @param gameId 
@@ -108,7 +220,7 @@ async function testSupportedContent_ue4ss_lua(files: string[], gameId: string, a
   const supported = (gameId === GAME_ID) &&
     (files.find((file: string) => /[^\\]+\\Scripts\\main\.lua$/.test(file)) !== undefined);
 
-  await checkForUE4SS(api)
+  await checkForUE4SS(api);
 
   return Promise.resolve({
     supported,
@@ -356,7 +468,7 @@ async function installContent_generic(files: string[]) {
  * Prepare for modding.
  * @param discovery 
  */
-async function prepareForModding(discovery: types.IDiscoveryResult) {
+async function prepareForModding(api: types.IExtensionApi, discovery: types.IDiscoveryResult) {
   const binariesPath = BINARIES_PATH[discovery.store]
   const contentPath = 'Maine\\Content'
 
@@ -376,6 +488,10 @@ async function prepareForModding(discovery: types.IDiscoveryResult) {
 
   // Maine\Content\Paks\LogicMods
   await fs.ensureDirWritableAsync(path.join(discovery.path, contentPath, 'Paks\\LogicMods'))
+
+  await download(api, PLUGIN_REQUIREMENTS);
+
+  await checkForUE4SS(api);
 }
 
 function main(context: types.IExtensionContext) {
@@ -394,7 +510,7 @@ function main(context: types.IExtensionContext) {
     requiredFiles: [
       'Grounded.exe'
     ],
-    setup: (discovery) => prepareForModding(discovery),
+    setup: (discovery) => prepareForModding(context.api, discovery) as any,
     environment: {
       SteamAPPId: APP_ID.steam,
     },
@@ -403,6 +519,11 @@ function main(context: types.IExtensionContext) {
     },
     requiresCleanup: true,
   });
+
+  // UE4SS injector (required for some mods)
+  context.registerInstaller('grounded-ue4ss_injector', 10,
+    (files, gameId) => testSupportedContent_ue4ss_injector(files, gameId),
+    (files, destinationPath) => installContent_ue4ss_injector(files, context.api, destinationPath));
 
   // UE4SS Lua mods
   context.registerInstaller('grounded-ue4ss_lua', 25,
