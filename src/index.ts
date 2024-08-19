@@ -220,7 +220,9 @@ async function testSupportedContent_ue4ss_lua(files: string[], gameId: string, a
   const supported = (gameId === GAME_ID) &&
     (files.find((file: string) => /[^\\]+\\Scripts\\main\.lua$/.test(file)) !== undefined);
 
-  await checkForUE4SS(api);
+  if (supported) {
+    await checkForUE4SS(api);
+  }
 
   return Promise.resolve({
     supported,
@@ -274,7 +276,9 @@ async function testSupportedContent_ue4ss_cpp(files: string[], gameId: string, a
   const supported = (gameId === GAME_ID) &&
     (files.find((file: string) => /[^\\]+\\dlls\\main\.dll$/.test(file)) !== undefined);
 
-  await checkForUE4SS(api);
+  if (supported) {
+    await checkForUE4SS(api);
+  }
 
   return Promise.resolve({
     supported,
@@ -329,7 +333,9 @@ async function testSupportedContent_ue4ss_BPLogicMods(files: string[], gameId: s
   const supported = (gameId === GAME_ID) &&
     (files.find((file: string) => /LogicMods\\.+\.pak$/.test(file)) !== undefined);
 
-  await checkForUE4SS(api);
+  if (supported) {
+    await checkForUE4SS(api);
+  }
 
   return Promise.resolve({
     supported,
