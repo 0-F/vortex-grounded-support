@@ -31,8 +31,8 @@ interface IGitHubAsset {
 const GAME_ID = 'grounded';
 
 const APP_ID = {
-  steam: '962130'
-  //TODO: xbox
+  steam: '962130',
+  xbox: 'Microsoft.Maine'
 }
 
 const BINARIES_PATH = {
@@ -507,7 +507,7 @@ function main(context: types.IExtensionContext) {
     mergeMods: true,
     queryArgs: {
       steam: [{ id: APP_ID.steam }],
-      // xbox: [{ id: MS_APPID }] //TODO: xbox
+      xbox: [{ id: APP_ID.xbox }]
     },
     supportedTools: [],
     queryModPath: () => '.',
