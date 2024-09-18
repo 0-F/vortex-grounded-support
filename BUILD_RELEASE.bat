@@ -1,0 +1,1 @@
+npm run BUILD_RELEASE

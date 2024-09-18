@@ -1,17 +1,20 @@
 {
   "name": "grounded-support",
-  "version": "0.2.0",
   "description": "Adds Grounded game support to Vortex",
   "main": "./out/index.js",
   "repository": "",
   "scripts": {
     "copyassets": "node copyAssets.js",
     "webpack": "node ./node_modules/webpack/bin/webpack --config webpack.config.js --progress",
-    "bundle7z": "7z a -t7z grounded-support.7z .\\dist\\*.*",
+    "bundle7z": "7z a -t7z RELEASE\\grounded-support.7z .\\dist\\*.*",
     "build": "npm run webpack && extractInfo",
     "copyplugin": "yarn copyassets && node copyplugin.js",
     "lint": "eslint .",
-    "lint:fix": "eslint --fix"
+    "lint:fix": "eslint --fix",
+    "vortex:run": "run_vortex.au3",
+    "vortex:kill": "close_vortex.au3",
+    "buildAndRun": "npm run vortex:kill && npm run build && npm run copyplugin && npm run vortex:run",
+    "BUILD_RELEASE": "mkdir RELEASE 2>nul & npm run build && npm run copyplugin && del RELEASE\\grounded-support.7z && if exist RELEASE\\grounded-support.7z (echo ERROR: cannot delete file.) else (npm run bundle7z)"
   },
   "author": "orax",
   "license": "MIT",
@@ -42,7 +45,6 @@
     "turbowalk": "github:Nexus-Mods/node-turbowalk",
     "typescript": "^4.4.3",
     "vortex-api": "github:Nexus-Mods/vortex-api",
-    "turbowalk": "github:Nexus-Mods/node-turbowalk",
     "webpack": "^5.57.1",
     "webpack-cli": "^4.8.0"
   },
