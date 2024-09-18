@@ -1,5 +1,6 @@
 {
   "name": "grounded-support",
+  "version": "0.3.0",
   "description": "Adds Grounded game support to Vortex",
   "main": "./out/index.js",
   "repository": "",
