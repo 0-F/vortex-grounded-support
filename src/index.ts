@@ -64,9 +64,10 @@ async function isFileExists(path: string) {
 async function checkForUE4SS(api: IExtensionApi) {
   const discovery = selectors.currentGameDiscovery(api.getState())
   const binariesPath = path.join(discovery.path, BINARIES_PATH[discovery.store])
+  const ue4ssPath = path.join(binariesPath, "ue4ss") // UE4SS experimental version
 
-  const ue4ssdll = await isFileExists(path.join(binariesPath, 'UE4SS.dll'));
-  const dwmapidll = await isFileExists(path.join(binariesPath, 'dwmapi.dll'));
+  const ue4ssdll = await isFileExists(path.join(binariesPath, 'UE4SS.dll')) || await isFileExists(path.join(ue4ssPath, 'UE4SS.dll'));
+  const dwmapidll = await isFileExists(path.join(binariesPath, 'dwmapi.dll')) || await isFileExists(path.join(ue4ssPath, 'dwmapi.dll'));
   const xinput13dll = await isFileExists(path.join(binariesPath, 'xinput1_3.dll'));
   const xinput14dll = await isFileExists(path.join(binariesPath, 'xinput1_4.dll'));
 
