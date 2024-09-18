@@ -1,3 +1,11 @@
+# personal directory
+.perso/
+
+#release directory
+RELEASE/
+
+BackUp/
+
 # Logs
 logs
 *.log
