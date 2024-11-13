@@ -1,29 +1,15 @@
 {
-  "name": "grounded-support",
-  "version": "0.3.0",
-  "description": "Adds Grounded game support to Vortex",
-  "main": "./out/index.js",
-  "repository": "",
-  "scripts": {
-    "copyassets": "node copyAssets.js",
-    "webpack": "node ./node_modules/webpack/bin/webpack --config webpack.config.js --progress",
-    "bundle7z": "7z a -t7z RELEASE\\grounded-support.7z .\\dist\\*.*",
-    "build": "npm run webpack && extractInfo",
-    "copyplugin": "yarn copyassets && node copyplugin.js",
-    "lint": "eslint .",
-    "lint:fix": "eslint --fix",
-    "vortex:run": "run_vortex.au3",
-    "vortex:kill": "close_vortex.au3",
-    "buildAndRun": "npm run vortex:kill && npm run build && npm run copyplugin && npm run vortex:run",
-    "BUILD_RELEASE": "mkdir RELEASE 2>nul & npm run build && npm run copyplugin && del RELEASE\\grounded-support.7z && if exist RELEASE\\grounded-support.7z (echo ERROR: cannot delete file.) else (npm run bundle7z)"
-  },
   "author": "orax",
-  "license": "MIT",
   "babel": {
     "presets": [
       "esnext"
     ]
   },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "vortex-download-helper": "https://github.com/IDCs/vortex-download-helper"
+  },
+  "description": "Adds Grounded game support to Vortex",
   "devDependencies": {
     "7z-bin": "Nexus-Mods/7z-bin",
     "@types/node": "^15.12.4",
@@ -43,14 +29,30 @@
     "react-bootstrap": "^0.33.0",
     "semver": "^7.6.2",
     "ts-loader": "^9.2.6",
+    "ts-node": "^10.9.2",
     "turbowalk": "github:Nexus-Mods/node-turbowalk",
     "typescript": "^4.4.3",
     "vortex-api": "github:Nexus-Mods/vortex-api",
     "webpack": "^5.57.1",
     "webpack-cli": "^4.8.0"
   },
-  "dependencies": {
-    "axios": "^1.7.2",
-    "vortex-download-helper": "https://github.com/IDCs/vortex-download-helper"
-  }
+  "license": "MIT",
+  "main": "./out/index.js",
+  "name": "grounded-support",
+  "repository": "",
+  "scripts": {
+    "BUILD_RELEASE": "mkdir RELEASE 2>nul & yarn build && yarn copyplugin && del RELEASE\\grounded-support.7z && if exist RELEASE\\grounded-support.7z (echo ERROR: cannot delete file.) else (yarn bundle7z)",
+    "build": "yarn webpack && extractInfo",
+    "build_copy": "yarn build && yarn copyplugin",
+    "build_copy_run": "yarn vortex:kill && yarn build && yarn copyplugin && yarn vortex:run",
+    "bundle7z": "7z a -t7z RELEASE\\grounded-support.7z .\\dist\\*.*",
+    "copyassets": "node copyAssets.js",
+    "copyplugin": "yarn copyassets && node copyplugin.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint --fix",
+    "vortex:kill": "close_vortex.ps1",
+    "vortex:run": "run_vortex.bat",
+    "webpack": "node ./node_modules/webpack/bin/webpack --config webpack.config.js --progress"
+  },
+  "version": "0.3.1"
 }

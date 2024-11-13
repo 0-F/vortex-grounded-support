@@ -1,21 +1,26 @@
 {
   "compilerOptions": {
-    "target": "esnext",
+    "esModuleInterop": true,
+    "jsx": "react",
     "module": "commonjs",
     "moduleResolution": "node",
     "noImplicitAny": false,
-    "removeComments": true,
-    "preserveConstEnums": true,
-    "rootDir": "./src",
     "outDir": "./out",
-    "jsx": "react",
+    "paths": {
+      "vortex-api": [
+        "./node_modules/vortex-api"
+      ]
+    },
+    "preserveConstEnums": true,
+    "removeComments": true,
+    "rootDir": "./src",
     "skipLibCheck": true,
-    "esModuleInterop": true,
-    "sourceMap": false
+    "sourceMap": true,
+    "target": "esnext"
   },
-    "exclude": [
-      "node_modules"
-    ],
+  "exclude": [
+    "node_modules"
+  ],
   "files": [
     "src/index.ts"
   ]
