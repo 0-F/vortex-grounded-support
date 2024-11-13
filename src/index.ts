@@ -495,10 +495,6 @@ async function prepareForModding(api: types.IExtensionApi, discovery: types.IDis
 
   // Maine\Content\Paks\LogicMods
   await fs.ensureDirWritableAsync(path.join(discovery.path, contentPath, 'Paks\\LogicMods'))
-
-  await download(api, PLUGIN_REQUIREMENTS);
-
-  await checkForUE4SS(api);
 }
 
 function main(context: types.IExtensionContext) {
