@@ -9,26 +9,21 @@ import semver from 'semver';
 import { fs, log, selectors, types, util } from 'vortex-api';
 import turbowalk, { IWalkOptions, IEntry } from 'turbowalk';
 
-import {
-  UE4SS_PATH_PREFIX, GAME_ID,
-  NOTIF_ID_BP_MODLOADER_DISABLED,
-  NOTIF_ID_UE4SS_UPDATE
-} from './common';
-
+import { GAME_ID, UE4SS, STEAM_DIR_NAME, XBOX_DIR_NAME } from './common';
 import { IPluginRequirement } from './types';
 
 export function resolveUE4SSPath(api: types.IExtensionApi): string {
   const state = api.getState();
   const discovery = selectors.discoveryByGame(state, GAME_ID);
-  const architecture = discovery?.store === 'xbox' ? 'WinGDK' : 'Win64';
-  return path.join(UE4SS_PATH_PREFIX, architecture);
+  const architecture = discovery?.store === 'xbox' ? XBOX_DIR_NAME : STEAM_DIR_NAME;
+  return path.join(UE4SS.PATH_PREFIX, architecture);
 }
 
 export async function resolveVersionByPattern(api: types.IExtensionApi, requirement: IPluginRequirement): Promise<string> {
   const state = api.getState();
   const files: types.IDownload[] = util.getSafe(state, ['persistent', 'downloads', 'files'], []);
   const latestVersion = Object.values(files).reduce((prev, file) => {
-    const match = requirement.fileArchivePattern.exec(file.localPath);
+    const match = requirement.fileVersionPattern.exec(file.localPath);
     if (match?.[1] && semver.gt(match[1], prev)) {
       prev = match[1];
     }
@@ -65,9 +60,23 @@ export async function findModByFile(api: types.IExtensionApi, modType: string, f
   return undefined;
 }
 
+export async function findModsByFile(api: types.IExtensionApi, modType: string, fileName: string): Promise<types.IMod[]> {
+  const mods: types.IMod[] = getMods(api, modType);
+  const modsList = [];
+  const installationPath = selectors.installPathForGame(api.getState(), GAME_ID);
+  for (const mod of mods) {
+    const modPath = path.join(installationPath, mod.installationPath);
+    const files = await walkPath(modPath);
+    if (files.find(file => file.filePath.endsWith(fileName))) {
+      modsList.push(mod);
+    }
+  }
+  return modsList;
+}
+
 export function findDownloadIdByPattern(api: types.IExtensionApi, requirement: IPluginRequirement): string | null {
   if (!requirement.fileArchivePattern) {
-    log('warn', `no fileArchivePattern defined for ${requirement.archiveFileName}`, 'findDownloadIdByPattern');
+    log('warn', `no fileArchivePattern defined`, 'findDownloadIdByPattern');
     return null;
   }
   const state = api.getState();
@@ -144,11 +153,6 @@ export async function runStagingOperationOnMod(api: types.IExtensionApi, modId: 
     api.showErrorNotification('Failed to run staging operation', err);
     return;
   }
-}
-
-export function dismissNotifications(api: types.IExtensionApi) {
-  // We're not dismissing the downloader notifications intentionally.
-  [NOTIF_ID_BP_MODLOADER_DISABLED, NOTIF_ID_UE4SS_UPDATE].forEach(id => api.dismissNotification(id));
 }
 
 export function formatBytes(bytes, decimals = 2) {

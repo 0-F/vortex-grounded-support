@@ -57,7 +57,8 @@ export type ModsMap = { [modId: string]: types.IMod };
 
 export type PluginRequirements = { [storeId: string]: IPluginRequirement[] }
 export interface IPluginRequirement {
-  archiveFileName: string;
+  name: string;
+  archiveFileName?: string;
   modType: string;
   assemblyFileName?: string;
   modId?: number;
@@ -65,6 +66,7 @@ export interface IPluginRequirement {
   githubUrl?: string;
   modUrl?: string;
   fileArchivePattern?: RegExp;
+  fileVersionPattern?: RegExp;
   findMod: (api: types.IExtensionApi) => Promise<types.IMod>;
   findDownloadId: (api: types.IExtensionApi) => string;
   resolveVersion?: (api: types.IExtensionApi) => Promise<string>;

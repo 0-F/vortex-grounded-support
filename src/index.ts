@@ -1,9 +1,9 @@
 import path from 'path';
 import { access } from 'fs/promises';
-import { types, selectors, fs, util } from 'vortex-api';
+import { types, selectors, fs, util, log } from 'vortex-api';
 import { IExtensionApi } from 'vortex-api/lib/types/IExtensionContext';
-import { PLUGIN_REQUIREMENTS } from './common';
-import { download } from './downloader';
+import { PLUGIN_REQUIREMENTS, GAME_ID, UE4SS, APP_ID, BINARIES_PATH } from './common';
+import { downloadUE4SS, checkUE4SSVersion, updateUE4SS } from './ue4ss_downloader';
 
 interface IGitHubRelease {
   url: string;
@@ -27,24 +27,6 @@ interface IGitHubAsset {
   release: IGitHubRelease;
 }
 
-
-const GAME_ID = 'grounded';
-
-const APP_ID = {
-  steam: '962130',
-  xbox: 'Microsoft.Maine'
-}
-
-const BINARIES_PATH = {
-  steam: 'Maine\\Binaries\\Win64', // Steam
-  xbox: 'Maine\\Binaries\\WinGDK'  // Microsoft Windows Store/Xbox Pass
-}
-
-const UE4SS_MODS_PATH = 'Mods'
-const UE4SS_SETTINGS_FILE = 'UE4SS-settings.ini';
-const UE4SS_MODS_FILE = 'mods.txt';
-const UE4SS_MODS_FILE_BACKUP = 'mods.txt.original';
-
 /**
  * Test if a file exists.
  * 
@@ -62,25 +44,32 @@ async function isFileExists(path: string) {
  * @param api Vortex API
  */
 async function checkForUE4SS(api: IExtensionApi) {
-  const discovery = selectors.currentGameDiscovery(api.getState())
-  const binariesPath = path.join(discovery.path, BINARIES_PATH[discovery.store])
-  const ue4ssPath = path.join(binariesPath, "ue4ss") // UE4SS experimental version
+  const discovery = selectors.currentGameDiscovery(api.getState());
+  const binariesPath = path.join(discovery.path, BINARIES_PATH[discovery.store]);
+  const ue4ssPath = path.join(binariesPath, UE4SS.DIR_NAME);
 
-  const ue4ssdll = await isFileExists(path.join(binariesPath, 'UE4SS.dll')) || await isFileExists(path.join(ue4ssPath, 'UE4SS.dll'));
+  const ue4ssdll = await isFileExists(path.join(binariesPath, UE4SS.DLL_FILE)) || await isFileExists(path.join(ue4ssPath, UE4SS.DLL_FILE));
   const dwmapidll = await isFileExists(path.join(binariesPath, 'dwmapi.dll')) || await isFileExists(path.join(ue4ssPath, 'dwmapi.dll'));
   const xinput13dll = await isFileExists(path.join(binariesPath, 'xinput1_3.dll'));
   const xinput14dll = await isFileExists(path.join(binariesPath, 'xinput1_4.dll'));
+
+  const mod = await PLUGIN_REQUIREMENTS[0].findMod(api);
+  if (mod) {
+    log('debug', `UE4SS seems to be installed by the mod ${mod.id}.`);
+    return;
+  }
 
   // Two UE4SS versions installed
   if ((ue4ssdll || dwmapidll) && (xinput13dll || xinput14dll)) {
     api.sendNotification({
       id: 'ue4ss-two-versions',
+      allowSuppress: true,
       type: 'warning',
       title: 'Two UE4SS versions installed',
       message:
-        'UE4SS 3.0 uses two new dlls: UE4SS.dll and ' +
+        'UE4SS v3 uses two new dlls: UE4SS.dll and ' +
         'dwmapi.dll and no longer uses the older xinput1_3.dll (or xinput1_4.dll). ' +
-        'If you want to use UE4SS version 2, you have to delete xinput1_3.dll and xinput1_4.dll.',
+        'If you want to use UE4SS version 3, you have to delete xinput1_3.dll and xinput1_4.dll.',
       actions: [
         {
           title: 'Open folder',
@@ -94,11 +83,12 @@ async function checkForUE4SS(api: IExtensionApi) {
   if (xinput13dll || xinput14dll) {
     api.sendNotification({
       id: 'ue4ss-v2-installed',
+      allowSuppress: true,
       type: 'warning',
       title: 'UE4SS v2 installed',
       message:
         'It look like UE4SS v2 is installed. ' +
-        'The mod may need UE4SS v3. ' +
+        'Some mods may require UE4SS v3. ' +
         'Remember that you have to uninstall UE4SS v2 before installing UE4SS v3.',
       actions: [
         {
@@ -112,16 +102,40 @@ async function checkForUE4SS(api: IExtensionApi) {
   // UE4SS not installed
   else if (!ue4ssdll || !dwmapidll) {
     api.sendNotification({
-      id: 'ue4ss-missing',
       type: 'warning',
-      title: 'UE4SS is not installed or some files are missing',
-      message: 'UE4SS seems to be required for this mod.',
-      actions: [
-        {
-          title: 'Download UE4SS',
-          action: () => util.opn('https://github.com/UE4SS-RE/RE-UE4SS/releases').catch(() => undefined)
+      allowSuppress: true,
+      id: 'ue4ss-download-requirement-notification',
+      message: 'Download UE4SS',
+      actions: [{
+        title: 'More',
+        action: async (dismiss) => {
+          await api.showDialog('question', 'Download and install UE4SS', {
+            bbcode:
+              "Some mods may require UE4SS to be installed in order to function correctly.[br][/br][br][/br]" +
+              "Would you like to download it now?[br][/br][br][/br]" +
+              "[i]UE4SS (Unreal Engine 4/5 Scripting System) is an Injectable LUA scripting system, SDK generator, " +
+              "live property editor and other dumping utilities for UE4/5 games.[/i][br][/br]" +
+              "Code repository: [url=https://github.com/UE4SS-RE/RE-UE4SS]github.com/UE4SS-RE/RE-UE4SS[/url]",
+            parameters: { requirement: 'UE4SS' }
+          }, [
+            { label: 'Close' },
+            {
+              label: 'Download',
+              action: async () => {
+                await downloadUE4SS(api);
+                return dismiss();
+              }
+            },
+          ])
+          return dismiss();
         }
-      ]
+      }, {
+        title: 'Download',
+        action: async (dismiss) => {
+          await downloadUE4SS(api);
+          return dismiss();
+        }
+      }],
     });
   }
 }
@@ -133,9 +147,9 @@ async function checkForUE4SS(api: IExtensionApi) {
  * @returns 
  */
 async function testSupportedContent_ue4ss_injector(files: string[], gameId: string) {
-  // required: UE4SS-settings.ini
+  // required: UE4SS.dll in the ue4ss folder
   const supported = gameId === GAME_ID && files.some(
-    file => file.toLowerCase() === UE4SS_SETTINGS_FILE.toLowerCase());
+    file => file === UE4SS.DIR_NAME + '\\' + UE4SS.DLL_FILE);
 
   return Promise.resolve({
     supported,
@@ -164,19 +178,19 @@ async function installContent_ue4ss_injector(files: string[], api: types.IExtens
     if (path.extname(segments[segments.length - 1]) !== '') {
       const destination = path.join(binariesPath, iter);
 
-      if (path.basename(iter) === UE4SS_MODS_FILE) {
+      if (path.basename(iter) === UE4SS.MODS_FILE) {
         const modsData: string = await fs.readFileAsync(path.join(destinationPath, iter), { encoding: 'utf8' });
         const modsInstr: types.IInstruction = {
           type: 'generatefile',
           data: modsData,
-          destination: UE4SS_MODS_FILE_BACKUP,
+          destination: UE4SS.MODS_FILE_BACKUP,
         }
         accum.push(modsInstr);
 
         return accum;
       }
 
-      if (iter === UE4SS_SETTINGS_FILE) {
+      if (iter === UE4SS.SETTINGS_FILE) {
         // Disable the use of Unreal's object array cache regardless of game store - it's causing crashes.
         const data: string = await fs.readFileAsync(path.join(destinationPath, iter), { encoding: 'utf8' });
         const newData = data.replace(/bUseUObjectArrayCache = true/gm, 'bUseUObjectArrayCache = false');
@@ -258,7 +272,7 @@ async function installContent_ue4ss_lua(files: string[], api: IExtensionApi) {
     return {
       type: 'copy',
       source: file,
-      destination: path.join(binariesPath, UE4SS_MODS_PATH, file.substring(idx)),
+      destination: path.join(binariesPath, UE4SS.MODS_MODS_PATH, file.substring(idx)),
     };
   });
 
@@ -315,7 +329,7 @@ function installContent_ue4ss_cpp(files: string[], api: IExtensionApi) {
     return {
       type: 'copy',
       source: file,
-      destination: path.join(binariesPath, UE4SS_MODS_PATH, file.substring(idx)),
+      destination: path.join(binariesPath, UE4SS.MODS_MODS_PATH, file.substring(idx)),
     };
   });
 
@@ -484,8 +498,8 @@ async function prepareForModding(api: types.IExtensionApi, discovery: types.IDis
   // Maine\Binaries\Win64
   await fs.ensureDirWritableAsync(path.join(discovery.path, binariesPath))
 
-  // Maine\Binaries\Win64\Mods
-  await fs.ensureDirWritableAsync(path.join(discovery.path, binariesPath, UE4SS_MODS_PATH))
+  // Maine\Binaries\Win64\ue4ss\Mods
+  await fs.ensureDirWritableAsync(path.join(discovery.path, binariesPath, UE4SS.MODS_MODS_PATH))
 
   // Maine\Content\Movies
   await fs.ensureDirWritableAsync(path.join(discovery.path, contentPath, 'Movies'))
@@ -495,6 +509,8 @@ async function prepareForModding(api: types.IExtensionApi, discovery: types.IDis
 
   // Maine\Content\Paks\LogicMods
   await fs.ensureDirWritableAsync(path.join(discovery.path, contentPath, 'Paks\\LogicMods'))
+
+  await checkForUE4SS(api);
 }
 
 function main(context: types.IExtensionContext) {
@@ -553,7 +569,20 @@ function main(context: types.IExtensionContext) {
     testSupportedContent_generic,
     installContent_generic)
 
-  return true
+  context.once(() => {
+    context.api.events.on('check-mods-version', (gameId) => {
+      checkUE4SSVersion(context.api, gameId);
+    });
+
+    context.api.events.on('mod-update', (gameId: string, modId: number, fileId: number, source: string) => {
+      if (gameId === GAME_ID && source === 'user-generated') {
+        updateUE4SS(context.api);
+      }
+    });
+
+  });
+
+  return true;
 }
 
 export default main;
