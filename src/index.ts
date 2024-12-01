@@ -280,6 +280,57 @@ async function installContent_ue4ss_lua(files: string[], api: IExtensionApi) {
 }
 
 /**
+ * Test if this is a supported shared UE4SS Lua library.
+ * @param files 
+ * @param gameId 
+ * @param api 
+ * @returns 
+ */
+async function testSupportedContent_ue4ss_lua_shared(files: string[], gameId: string, api: IExtensionApi) {
+  // required: shared\<lib_name>\**\*.lua or shared\*.lua
+  const supported = (gameId === GAME_ID) &&
+    (files.find((file: string) => /(?:^|\\)shared\\.*\.lua$/.test(file)) !== undefined);
+
+  if (supported) {
+    await checkForUE4SS(api);
+  }
+
+  return Promise.resolve({
+    supported,
+    requiredFiles: [],
+  });
+}
+
+/**
+ * Install a shared UE4SS Lua library.
+ * @param files 
+ * @param api 
+ * @returns 
+ */
+async function installContent_ue4ss_lua_shared(files: string[], api: IExtensionApi) {
+  // Remove directories and anything that isn't in the shared directory.
+  const filtered = files
+    .filter((file: string) => file.search(/(?:^|\\)shared\\/) !== -1)
+    .map((file: string) => file.replace(/.*\\shared\\/, 'shared\\'));
+
+  // get the binaries path
+  // Maine\\Binaries\\Win64 for Steam
+  // Maine\\Binaries\\WinGDK for Microsoft Windows Store/Xbox Pass
+  const gameStore = selectors.currentGameDiscovery(api.getState()).store;
+  const binariesPath = BINARIES_PATH[gameStore]
+
+  const instructions = filtered.map((file: string) => {
+    return {
+      type: 'copy',
+      source: file,
+      destination: path.join(binariesPath, UE4SS.MODS_MODS_PATH, file),
+    };
+  });
+
+  return Promise.resolve({ instructions });
+}
+
+/**
  * Test if this is a supported UE4SS C++ mod.
  * @param files 
  * @param gameId 
@@ -543,6 +594,11 @@ function main(context: types.IExtensionContext) {
   context.registerInstaller('grounded-ue4ss_injector', 10,
     (files, gameId) => testSupportedContent_ue4ss_injector(files, gameId),
     (files, destinationPath) => installContent_ue4ss_injector(files, context.api, destinationPath));
+
+  // UE4SS shared Lua libraries
+  context.registerInstaller('grounded-ue4ss_lua_shared', 20,
+    (files, gameId) => testSupportedContent_ue4ss_lua_shared(files, gameId, context.api),
+    (files) => installContent_ue4ss_lua_shared(files, context.api));
 
   // UE4SS Lua mods
   context.registerInstaller('grounded-ue4ss_lua', 25,
