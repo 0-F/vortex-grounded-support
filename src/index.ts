@@ -105,7 +105,8 @@ async function checkForUE4SS(api: IExtensionApi) {
       type: 'warning',
       allowSuppress: true,
       id: 'ue4ss-download-requirement-notification',
-      message: 'Download UE4SS',
+      title: 'Download UE4SS',
+      message: 'Some mods may require UE4SS. Do you want to download it? If UE4SS causes instability you can disable it with Vortex.',
       actions: [{
         title: 'More',
         action: async (dismiss) => {
