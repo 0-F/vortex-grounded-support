@@ -287,9 +287,9 @@ async function installContent_ue4ss_lua(files: string[], api: IExtensionApi) {
  * @returns 
  */
 async function testSupportedContent_ue4ss_lua_shared(files: string[], gameId: string, api: IExtensionApi) {
-  // required: shared\<lib_name>\**\*.lua or shared\*.lua
+  // required: shared\
   const supported = (gameId === GAME_ID) &&
-    (files.find((file: string) => /(?:^|\\)shared\\.*\.lua$/.test(file)) !== undefined);
+    (files.find((file: string) => /(?:^|\\)shared\\/.test(file)) !== undefined);
 
   if (supported) {
     await checkForUE4SS(api);
@@ -311,7 +311,7 @@ async function installContent_ue4ss_lua_shared(files: string[], api: IExtensionA
   // Remove directories and anything that isn't in the shared directory.
   const filtered = files
     .filter((file: string) => file.search(/(?:^|\\)shared\\/) !== -1)
-    .map((file: string) => file.replace(/.*\\shared\\/, 'shared\\'));
+    .filter((file: string) => file.search(/\\$/) === -1)
 
   // get the binaries path
   // Maine\\Binaries\\Win64 for Steam
@@ -323,7 +323,7 @@ async function installContent_ue4ss_lua_shared(files: string[], api: IExtensionA
     return {
       type: 'copy',
       source: file,
-      destination: path.join(binariesPath, UE4SS.MODS_MODS_PATH, file),
+      destination: path.join(binariesPath, UE4SS.MODS_MODS_PATH, file.replace(/.*\\shared\\/, 'shared\\')),
     };
   });
 
