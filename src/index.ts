@@ -193,7 +193,11 @@ async function installContent_ue4ss_injector(files: string[], api: types.IExtens
       if (iter === UE4SS.SETTINGS_FILE) {
         // Disable the use of Unreal's object array cache regardless of game store - it's causing crashes.
         const data: string = await fs.readFileAsync(path.join(destinationPath, iter), { encoding: 'utf8' });
-        const newData = data.replace(/bUseUObjectArrayCache = true/gm, 'bUseUObjectArrayCache = false');
+        const newData = data
+          .replace(/bUseUObjectArrayCache = true/gm, 'bUseUObjectArrayCache = false')
+          .replace(/EnableDumping = 1/gm, 'EnableDumping = 0')
+          .replace(/GraphicsAPI = opengl/gm, 'GraphicsAPI = dx11')
+          .replace(/GuiConsoleEnabled = 1/gm, 'GuiConsoleEnabled = 0');
         const createInstr: types.IInstruction = {
           type: 'generatefile',
           data: newData,
