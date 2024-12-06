@@ -2,7 +2,7 @@ import path from 'path';
 import { access } from 'fs/promises';
 import { types, selectors, fs, util, log } from 'vortex-api';
 import { IExtensionApi } from 'vortex-api/lib/types/IExtensionContext';
-import { PLUGIN_REQUIREMENTS, GAME_ID, UE4SS, APP_ID, BINARIES_PATH } from './common';
+import { PLUGIN_REQUIREMENTS, GAME_ID, UE4SS, APP_ID, BINARIES_PATH, DEFAULT_EXECUTABLE, XBOX_EXECUTABLE } from './common';
 import { downloadUE4SS, checkUE4SSVersion, updateUE4SS } from './ue4ss_downloader';
 
 interface IGitHubRelease {
@@ -25,6 +25,31 @@ interface IGitHubAsset {
   updated_at: string;
   browser_download_url: string;
   release: IGitHubRelease;
+}
+
+function getExecutable(discoveryPath: string) {
+  const isCorrectExec = (exec: string) => {
+    try {
+      fs.statSync(path.join(discoveryPath, exec));
+      return true;
+    } catch (err) {
+      return false;
+    }
+  };
+
+  if (discoveryPath === undefined) {
+    return DEFAULT_EXECUTABLE;
+  }
+
+  if (isCorrectExec(XBOX_EXECUTABLE)) {
+    return XBOX_EXECUTABLE;
+  }
+
+  if (isCorrectExec(DEFAULT_EXECUTABLE)) {
+    return DEFAULT_EXECUTABLE;
+  }
+
+  return DEFAULT_EXECUTABLE;
 }
 
 /**
@@ -581,10 +606,8 @@ function main(context: types.IExtensionContext) {
     supportedTools: [],
     queryModPath: () => '.',
     logo: 'gameart.jpg',
-    executable: () => 'Grounded.exe',
-    requiredFiles: [
-      'Grounded.exe'
-    ],
+    executable: getExecutable,
+    requiredFiles: ['Maine/Content/Paks/global.ucas'],
     setup: (discovery) => prepareForModding(context.api, discovery) as any,
     environment: {
       SteamAPPId: APP_ID.steam,
