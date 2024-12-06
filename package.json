@@ -54,6 +54,6 @@
     "vortex:run": "run_vortex.bat",
     "webpack": "node ./node_modules/webpack/bin/webpack --config webpack.config.js --progress"
   },
-  "version": "0.3.1",
+  "version": "0.4.0",
   "packageManager": "yarn@1.22.19+sha1.4ba7fc5c6e704fce2066ecbfb0b0d8976fe62447"
 }
