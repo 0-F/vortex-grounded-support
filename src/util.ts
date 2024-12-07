@@ -9,7 +9,7 @@ import semver from 'semver';
 import { fs, log, selectors, types, util } from 'vortex-api';
 import turbowalk, { IWalkOptions, IEntry } from 'turbowalk';
 
-import { GAME_ID, UE4SS, STEAM_DIR_NAME, XBOX_DIR_NAME } from './common';
+import { GAME_ID, UE4SS, STEAM_DIR_NAME, XBOX_DIR_NAME, BINARIES_PATH } from './common';
 import { IPluginRequirement } from './types';
 
 export function resolveUE4SSPath(api: types.IExtensionApi): string {
@@ -156,13 +156,37 @@ export async function runStagingOperationOnMod(api: types.IExtensionApi, modId: 
 }
 
 export function formatBytes(bytes, decimals = 2) {
-  if (!+bytes) return '0 Bytes'
+  if (!+bytes) return '0 Bytes';
 
-  const k = 1024
-  const dm = decimals < 0 ? 0 : decimals
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
 
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+}
+
+export function getBinariesPath(discovery: types.IDiscoveryResult) {
+  const isCorrectPath = (binPath: string) => {
+    try {
+      fs.statSync(binPath);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  };
+
+  if (discovery.store) {
+    return BINARIES_PATH[discovery.store];
+  }
+
+  // try to find the binaries path
+  for (const prop in BINARIES_PATH) {
+    if (isCorrectPath(path.join(discovery.path, BINARIES_PATH[prop]))) {
+      return BINARIES_PATH[prop];
+    }
+  }
+
+  log('error', 'Unable to find BINARIES_PATH.');
 }

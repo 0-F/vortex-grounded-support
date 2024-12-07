@@ -2,8 +2,10 @@ import path from 'path';
 import { access } from 'fs/promises';
 import { types, selectors, fs, util, log } from 'vortex-api';
 import { IExtensionApi } from 'vortex-api/lib/types/IExtensionContext';
-import { PLUGIN_REQUIREMENTS, GAME_ID, UE4SS, APP_ID, BINARIES_PATH, DEFAULT_EXECUTABLE, XBOX_EXECUTABLE } from './common';
+import { IInstruction } from 'vortex-api/lib/extensions/mod_management/types/IInstallResult';
+import { PLUGIN_REQUIREMENTS, GAME_ID, UE4SS, APP_ID, DEFAULT_EXECUTABLE, XBOX_EXECUTABLE } from './common';
 import { downloadUE4SS, checkUE4SSVersion, updateUE4SS } from './ue4ss_downloader';
+import { getBinariesPath } from './util';
 
 interface IGitHubRelease {
   url: string;
@@ -70,7 +72,7 @@ async function isFileExists(path: string) {
  */
 async function checkForUE4SS(api: IExtensionApi) {
   const discovery = selectors.currentGameDiscovery(api.getState());
-  const binariesPath = path.join(discovery.path, BINARIES_PATH[discovery.store]);
+  const binariesPath = path.join(discovery.path, getBinariesPath(discovery));
   const ue4ssPath = path.join(binariesPath, UE4SS.DIR_NAME);
 
   const ue4ssdll = await isFileExists(path.join(binariesPath, UE4SS.DLL_FILE)) || await isFileExists(path.join(ue4ssPath, UE4SS.DLL_FILE));
@@ -195,8 +197,8 @@ async function installContent_ue4ss_injector(files: string[], api: types.IExtens
   // get the binaries path
   // Maine\\Binaries\\Win64 for Steam
   // Maine\\Binaries\\WinGDK for Microsoft Windows Store/Xbox Pass
-  const gameStore = selectors.currentGameDiscovery(api.getState()).store;
-  const binariesPath = BINARIES_PATH[gameStore]
+  const discovery = selectors.currentGameDiscovery(api.getState());
+  const binariesPath = getBinariesPath(discovery);
 
   const instructions = await files.reduce(async (accumP, iter) => {
     const accum = await accumP;
@@ -295,8 +297,8 @@ async function installContent_ue4ss_lua(files: string[], api: IExtensionApi) {
   // get the binaries path
   // Maine\\Binaries\\Win64 for Steam
   // Maine\\Binaries\\WinGDK for Microsoft Windows Store/Xbox Pass
-  const gameStore = selectors.currentGameDiscovery(api.getState()).store;
-  const binariesPath = BINARIES_PATH[gameStore]
+  const discovery = selectors.currentGameDiscovery(api.getState());
+  const binariesPath = getBinariesPath(discovery);
 
   const instructions = filtered.map((file: string) => {
     return {
@@ -346,8 +348,8 @@ async function installContent_ue4ss_lua_shared(files: string[], api: IExtensionA
   // get the binaries path
   // Maine\\Binaries\\Win64 for Steam
   // Maine\\Binaries\\WinGDK for Microsoft Windows Store/Xbox Pass
-  const gameStore = selectors.currentGameDiscovery(api.getState()).store;
-  const binariesPath = BINARIES_PATH[gameStore]
+  const discovery = selectors.currentGameDiscovery(api.getState());
+  const binariesPath = getBinariesPath(discovery);
 
   const instructions = filtered.map((file: string) => {
     return {
@@ -403,8 +405,8 @@ function installContent_ue4ss_cpp(files: string[], api: IExtensionApi) {
   // get the binaries path
   // Maine\\Binaries\\Win64 for Steam
   // Maine\\Binaries\\WinGDK for Microsoft Windows Store/Xbox Pass
-  const gameStore = selectors.currentGameDiscovery(api.getState()).store;
-  const binariesPath = BINARIES_PATH[gameStore]
+  const discovery = selectors.currentGameDiscovery(api.getState());
+  const binariesPath = getBinariesPath(discovery);
 
   const instructions = filtered.map((file: string) => {
     return {
@@ -555,7 +557,7 @@ async function installContent_generic(files: string[]) {
   const filtered = files.filter((file: string) =>
     ((file.indexOf(rootPath) !== -1) && (!file.endsWith(path.sep))));
 
-  const instructions = filtered.map((file: string) => {
+  const instructions: IInstruction[] = filtered.map((file: string) => {
     return {
       type: 'copy',
       source: file,
@@ -571,30 +573,33 @@ async function installContent_generic(files: string[]) {
  * @param discovery 
  */
 async function prepareForModding(api: types.IExtensionApi, discovery: types.IDiscoveryResult) {
-  const binariesPath = BINARIES_PATH[discovery.store]
-  const contentPath = 'Maine\\Content'
+  const binariesPath = getBinariesPath(discovery);
+  const contentPath = 'Maine\\Content';
 
   // ensure these paths are writable
 
   // Maine\Binaries\Win64
-  await fs.ensureDirWritableAsync(path.join(discovery.path, binariesPath))
+  await fs.ensureDirWritableAsync(path.join(discovery.path, binariesPath));
 
   // Maine\Binaries\Win64\ue4ss\Mods
-  await fs.ensureDirWritableAsync(path.join(discovery.path, binariesPath, UE4SS.MODS_MODS_PATH))
+  await fs.ensureDirWritableAsync(path.join(discovery.path, binariesPath, UE4SS.MODS_MODS_PATH));
 
   // Maine\Content\Movies
-  await fs.ensureDirWritableAsync(path.join(discovery.path, contentPath, 'Movies'))
+  await fs.ensureDirWritableAsync(path.join(discovery.path, contentPath, 'Movies'));
 
   // Maine\Content\Paks
-  await fs.ensureDirWritableAsync(path.join(discovery.path, contentPath, 'Paks'))
+  await fs.ensureDirWritableAsync(path.join(discovery.path, contentPath, 'Paks'));
 
   // Maine\Content\Paks\LogicMods
-  await fs.ensureDirWritableAsync(path.join(discovery.path, contentPath, 'Paks\\LogicMods'))
+  await fs.ensureDirWritableAsync(path.join(discovery.path, contentPath, 'Paks\\LogicMods'));
 
   await checkForUE4SS(api);
 }
 
 function main(context: types.IExtensionContext) {
+  /**
+   * @param IGame
+   */
   context.registerGame({
     id: GAME_ID,
     name: 'Grounded',
@@ -614,8 +619,12 @@ function main(context: types.IExtensionContext) {
     },
     details: {
       steamAppId: APP_ID.steam,
+      supportsSymlinks: false,
     },
     requiresCleanup: true,
+    compatible: {
+      symlinks: false
+    }
   });
 
   // UE4SS injector (required for some mods)
